@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>政务便民服务平台 · 数据驾驶舱</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%231a3a5c'/%3E%3Ctext x='32' y='46' font-size='36' text-anchor='middle' fill='white'%3E%E6%94%BF%3C/text%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+    background: #eef1f5;
+    color: #2c3e50;
+    font-size: 14px;
+  }
+
+  /* ===== 顶部红线（政务经典） ===== */
+  .top-line { height: 4px; background: #c0392b; }
+
+  /* ===== 顶部栏 ===== */
+  .topbar {
+    height: 64px;
+    background: linear-gradient(90deg, #0d2038 0%, #1a3a5c 100%);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 0 28px;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(13, 32, 56, 0.25);
+  }
+  .topbar .brand {
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .topbar .brand .seal {
+    width: 32px; height: 32px;
+    background: #c0392b;
+    color: #fff;
+    text-align: center;
+    line-height: 32px;
+    font-size: 16px;
+    font-weight: 700;
+    border: 2px solid rgba(255,255,255,0.3);
+  }
+  .topbar .meta { font-size: 12px; color: #b8c9db; text-align: right; line-height: 1.6; }
+
+  /* ===== 布局 ===== */
+  .layout { display: flex; min-height: calc(100vh - 68px); }
+  .sidebar {
+    width: 210px;
+    background: #0d2038;
+    color: #c5d2e2;
+    padding-top: 8px;
+    flex-shrink: 0;
+  }
+  .menu-group { font-size: 11px; color: #5a6d85; padding: 16px 24px 6px; letter-spacing: 1px; }
+  .menu-item {
+    padding: 13px 24px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .menu-item:hover { background: #162d4a; color: #fff; }
+  .menu-item.active {
+    background: #1a3a5c;
+    border-left-color: #c0392b;
+    color: #fff;
+  }
+  .menu-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .main { flex: 1; padding: 22px 26px; overflow-y: auto; }
+  .crumb { font-size: 12px; color: #7f8c9b; margin-bottom: 18px; }
+  .crumb b { color: #1a3a5c; }
+
+  /* ===== KPI 卡片：白底 + 左侧色条 ===== */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 22px; }
+  .kpi {
+    background: #fff;
+    border: 1px solid #e3e7ed;
+    border-left: 4px solid #1a3a5c;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .kpi.warn { border-left-color: #c0392b; }
+  .kpi.good { border-left-color: #27865f; }
+  .kpi .label { font-size: 12px; color: #7f8c9b; margin-bottom: 8px; }
+  .kpi .value { font-size: 28px; font-weight: 700; color: #1a3a5c; font-family: "Consolas", monospace; }
+  .kpi.warn .value { color: #c0392b; }
+  .kpi.good .value { color: #27865f; }
+  .kpi .sub { font-size: 11px; color: #95a5b5; margin-top: 6px; }
+
+  /* ===== 卡片 ===== */
+  .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .card {
+    background: #fff;
+    border: 1px solid #e3e7ed;
+    padding: 18px 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+  .card h3 {
+    font-size: 15px;
+    color: #1a3a5c;
+    border-left: 4px solid #c0392b;
+    padding-left: 10px;
+    margin-bottom: 14px;
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+  }
+  .card h3 .hint { font-size: 11px; color: #95a5b5; font-weight: normal; }
+  .chart { width: 100%; height: 290px; }
+
+  .view { display: none; }
+  .view.show { display: block; }
+
+  /* ===== 部门详情弹窗 ===== */
+  .modal-mask {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(13, 32, 56, 0.5);
+    z-index: 100;
+  }
+  .modal-mask.show { display: flex; align-items: center; justify-content: center; }
+  .modal {
+    background: #fff;
+    width: 480px;
+    padding: 24px 28px;
+    border-top: 4px solid #c0392b;
+  }
+  .modal h2 { font-size: 17px; color: #1a3a5c; margin-bottom: 16px; }
+  .modal .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #e3e7ed; font-size: 13px; }
+  .modal .row b { color: #1a3a5c; font-family: Consolas, monospace; }
+  .modal .close {
+    margin-top: 18px;
+    text-align: right;
+  }
+  .modal .close button {
+    background: #1a3a5c; color: #fff; border: none;
+    padding: 8px 20px; cursor: pointer; font-size: 13px;
+  }
+
+  /* ===== 全局悬浮客服 ===== */
+  .chat-fab {
+    position: fixed;
+    right: 28px; bottom: 28px;
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: #1a3a5c;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(26, 58, 92, 0.4);
+    z-index: 90;
+    transition: transform 0.2s;
+  }
+  .chat-fab:hover { transform: scale(1.08); }
+  .chat-fab svg { width: 28px; height: 28px; }
+
+  .chat-panel {
+    position: fixed;
+    right: 28px; bottom: 96px;
+    width: 360px; height: 460px;
+    background: #fff;
+    border: 1px solid #e3e7ed;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+    display: none;
+    flex-direction: column;
+    z-index: 95;
+  }
+  .chat-panel.show { display: flex; }
+  .chat-header {
+    background: #1a3a5c; color: #fff;
+    padding: 12px 16px;
+    font-size: 14px; font-weight: 600;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .chat-header .close { cursor: pointer; font-size: 18px; }
+  .chat-body { flex: 1; overflow-y: auto; padding: 14px; background: #f7f8fa; }
+  .msg { margin-bottom: 12px; max-width: 85%; }
+  .msg.bot { background: #fff; border: 1px solid #e3e7ed; padding: 10px 12px; border-radius: 4px; }
+  .msg.user { background: #1a3a5c; color: #fff; padding: 10px 12px; border-radius: 4px; margin-left: auto; }
+  .chat-input {
+    display: flex; border-top: 1px solid #e3e7ed;
+  }
+  .chat-input input {
+    flex: 1; border: none; padding: 12px; font-size: 13px; outline: none;
+  }
+  .chat-input button {
+    background: #c0392b; color: #fff; border: none;
+    padding: 0 20px; cursor: pointer; font-size: 13px;
+  }
+
+  .quick-btn {
+    text-align:left; padding:8px 12px; background:#f4f6f9; border:1px solid #dde3ea;
+    border-radius:4px; font-size:12px; color:#1a3a5c; cursor:pointer; transition:all 0.15s;
+  }
+  .quick-btn:hover { background:#1a3a5c; color:#fff; border-color:#1a3a5c; }
+  .dots { display:inline-block; width:20px; text-align:left; }
+  .dots::after { content:''; animation: dots 1.2s steps(4) infinite; }
+  @keyframes dots { 0%{content:'';} 25%{content:'.';} 50%{content:'..';} 75%{content:'...';} }
+</style>
+</head>
+<body>
+
+<div class="top-line"></div>
+
+<div class="topbar">
+  <div class="brand"><span class="seal">政</span>政务便民服务平台 · 数据驾驶舱</div>
+  <div class="meta">数据周期：2026-07-13 至 2026-10-10<br>管理员　|　政务服务管理局</div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="menu-group">概览</div>
+    <div class="menu-item active" data-view="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      数据总览
+    </div>
+    <div class="menu-group">分析</div>
+    <div class="menu-item" data-view="dept">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V10m5 11V10m5 11V10m5 11V10M4 10l8-6 8 6"/></svg>
+      部门分析
+    </div>
+    <div class="menu-item" data-view="complaint">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v10m0 0l-4 8m4-8l4 8M5 7h14"/></svg>
+      投诉与满意度
+    </div>
+    <div class="menu-group">系统</div>
+    <div class="menu-item" data-view="quality">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4m5 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
+      数据质量
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- ===== 数据总览 ===== -->
+    <div class="view show" id="view-dashboard">
+      <div class="crumb">首页 / <b>数据总览</b></div>
+
+      <div class="kpi-row">
+        <div class="kpi">
+          <div class="label">近 90 天总工单</div>
+          <div class="value">27,305</div>
+          <div class="sub">有效工单 26,912 件</div>
+        </div>
+        <div class="kpi good">
+          <div class="label">办结率</div>
+          <div class="value">93.7%</div>
+          <div class="sub">在办 1,407 件</div>
+        </div>
+        <div class="kpi warn">
+          <div class="label">超时率（预警）</div>
+          <div class="value">13.9%</div>
+          <div class="sub">平均办结 11.1 天</div>
+        </div>
+        <div class="kpi warn">
+          <div class="label">投诉满意度（偏低）</div>
+          <div class="value">2.61 分</div>
+          <div class="sub">投诉 2,000 件</div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="card">
+          <h3>近 90 天工单受理趋势 <span class="hint">悬停查看每日详情</span></h3>
+          <div class="chart" id="c_trend"></div>
+        </div>
+        <div class="card">
+          <h3>办事渠道分布</h3>
+          <div class="chart" id="c_channel"></div>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="card">
+          <h3>部门超时率排行 <span class="hint">点击部门查看详情</span></h3>
+          <div class="chart" id="c_timeout"></div>
+        </div>
+        <div class="card">
+          <h3>咨询主题分布</h3>
+          <div class="chart" id="c_consult"></div>
+        </div>
+        <div class="card">
+          <h3>投诉类型构成</h3>
+          <div class="chart" id="c_ctype"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 部门分析 ===== -->
+    <div class="view" id="view-dept">
+      <div class="crumb">首页 / <b>部门分析</b></div>
+      <div class="card" style="margin-bottom:16px;">
+        <h3>各部门办件量 × 超时率对比</h3>
+        <div class="chart" id="d_dept_chart" style="height:320px;"></div>
+      </div>
+      <div class="card">
+        <h3>部门办件明细 <span class="hint">点击行查看详情</span></h3>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <thead>
+            <tr style="background:#f4f6f9;color:#1a3a5c;">
+              <th style="padding:10px;text-align:left;">部门</th>
+              <th style="padding:10px;text-align:right;">办件量</th>
+              <th style="padding:10px;text-align:right;">办结率</th>
+              <th style="padding:10px;text-align:right;">平均时长(天)</th>
+              <th style="padding:10px;text-align:right;">超时率</th>
+            </tr>
+          </thead>
+          <tbody id="deptTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== 投诉与满意度 ===== -->
+    <div class="view" id="view-complaint">
+      <div class="crumb">首页 / <b>投诉与满意度</b></div>
+      <div class="grid">
+        <div class="card">
+          <h3>各部门投诉量 × 满意度 <span class="hint">气泡大小=平均处理天数</span></h3>
+          <div class="chart" id="c_bubble" style="height:380px;"></div>
+        </div>
+        <div class="card">
+          <h3>投诉类型构成</h3>
+          <div class="chart" id="c_type2" style="height:380px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 数据质量 ===== -->
+    <div class="view" id="view-quality">
+      <div class="crumb">首页 / <b>数据质量</b></div>
+      <div class="kpi-row" style="grid-template-columns:repeat(5,1fr);">
+        <div class="kpi"><div class="label">原始脏数据</div><div class="value">30,808</div></div>
+        <div class="kpi"><div class="label">剔缺失时间</div><div class="value warn">-1,536</div></div>
+        <div class="kpi"><div class="label">剔废弃件</div><div class="value warn">-1,164</div></div>
+        <div class="kpi"><div class="label">剔重复件</div><div class="value warn">-796</div></div>
+        <div class="kpi good"><div class="label">清洗后入库</div><div class="value">27,312</div></div>
+      </div>
+      <div class="card">
+        <h3>ETL 清洗漏斗 <span class="hint">原始 → 清洗 → 入库</span></h3>
+        <div class="chart" id="q_funnel" style="height:300px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 部门详情弹窗 ===== -->
+<div class="modal-mask" id="deptModal">
+  <div class="modal">
+    <h2 id="modalTitle">部门详情</h2>
+    <div id="modalBody"></div>
+    <div class="close"><button onclick="document.getElementById('deptModal').classList.remove('show')">关闭</button></div>
+  </div>
+</div>
+
+<!-- ===== 全局悬浮客服 ===== -->
+<div class="chat-fab" id="chatFab">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="4" y="8" width="16" height="12" rx="2"/>
+    <path d="M12 8V4m0 4l-3 3m3-3l3 3M9 13h.01M15 13h.01"/>
+  </svg>
+</div>
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <span>智能客服「小政」</span>
+    <span class="close" onclick="document.getElementById('chatPanel').classList.remove('show')">×</span>
+  </div>
+  <div class="chat-body" id="chatBody">
+    <div class="msg bot">您好，我是政务便民智能客服「小政」。点击下方常见问题或直接输入您的问题。</div>
+  </div>
+  <div style="padding:6px 12px;border-top:1px solid #eef1f5;display:flex;flex-direction:column;gap:5px;">
+    <button class="quick-btn" data-q="办社保需要带什么材料？">办社保需要带什么材料？</button>
+    <button class="quick-btn" data-q="我想投诉怎么处理？">我想投诉怎么处理？</button>
+    <button class="quick-btn" data-q="哪个部门超时最多？">哪个部门超时最多？</button>
+    <button class="quick-btn" data-q="政务大厅营业时间是几点？">政务大厅营业时间是几点？</button>
+  </div>
+  <div class="chat-input">
+    <input id="chatInput" placeholder="请输入您的问题...">
+    <button onclick="sendMsg()">发送</button>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:8000/api';
+  const NAVY = '#1a3a5c', BLUE = '#2e6da4', RED = '#c0392b', GOLD = '#b08d2e', GRAY = '#9fb2c8';
+  const tooltipStyle = { trigger: 'axis', backgroundColor: '#fff', borderColor: '#e3e7ed', textStyle: { color: '#2c3e50' } };
+
+  // ===== 菜单切换 + 懒加载子页 =====
+  const loaded = {};
+  document.querySelectorAll('.menu-item').forEach(item => {
+    item.addEventListener('click', async () => {
+      document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+      document.querySelectorAll('.view').forEach(v => v.classList.remove('show'));
+      item.classList.add('active');
+      const view = item.dataset.view;
+      document.getElementById('view-' + view).classList.add('show');
+      if (!loaded[view]) {
+        if (view === 'dept') await loadDeptPage();
+        if (view === 'complaint') await loadComplaintPage();
+        if (view === 'quality') await loadQualityPage();
+        loaded[view] = true;
+      }
+    });
+  });
+
+  // ===== 部门分析页 =====
+  async function loadDeptPage() {
+    const dept = await (await fetch(`${API}/dept/ranking`)).json();
+    const rows = dept.data;
+
+    // 表格
+    document.getElementById('deptTable').innerHTML = rows.map(d => `
+      <tr style="border-bottom:1px solid #eef1f5;cursor:pointer;" onclick="showDept('${d.dept_short}')">
+        <td style="padding:10px;font-weight:600;color:#1a3a5c;">${d.dept_short}</td>
+        <td style="padding:10px;text-align:right;font-family:Consolas,monospace;">${d.total}</td>
+        <td style="padding:10px;text-align:right;">${d.done_rate}%</td>
+        <td style="padding:10px;text-align:right;font-family:Consolas,monospace;">${d.avg_dur}</td>
+        <td style="padding:10px;text-align:right;color:${d.timeout_rate > 20 ? '#c0392b' : '#1a3a5c'};font-weight:600;">${d.timeout_rate}%</td>
+      </tr>
+    `).join('');
+
+    // 双轴柱线图：办件量（柱）+ 超时率（线）
+    const sorted = [...rows].sort((a, b) => b.total - a.total);
+    echarts.init(document.getElementById('d_dept_chart')).setOption({
+      tooltip: { trigger: 'axis' },
+      legend: { data: ['办件量', '超时率'], top: 0 },
+      grid: { left: 50, right: 50, top: 30, bottom: 30 },
+      xAxis: { type: 'category', data: sorted.map(d => d.dept_short), axisLabel: { fontSize: 10 } },
+      yAxis: [
+        { type: 'value', name: '办件量', position: 'left' },
+        { type: 'value', name: '超时率%', position: 'right', max: 35 }
+      ],
+      series: [
+        { name: '办件量', type: 'bar', data: sorted.map(d => d.total), itemStyle: { color: NAVY }, barWidth: 24 },
+        { name: '超时率', type: 'line', yAxisIndex: 1, data: sorted.map(d => d.timeout_rate),
+          itemStyle: { color: RED }, lineStyle: { width: 2 } }
+      ]
+    });
+  }
+
+  // ===== 投诉与满意度页 =====
+  async function loadComplaintPage() {
+    const comp = await (await fetch(`${API}/complaint`)).json();
+    const byDept = comp.by_dept;
+
+    // 气泡图：x=投诉量, y=满意度, size=处理天数
+    echarts.init(document.getElementById('c_bubble')).setOption({
+      tooltip: {
+        formatter: p => `${p.data[3]}<br/>投诉 ${p.data[0]} 件<br/>满意度 ${p.data[1]} 分<br/>平均处理 ${p.data[2]} 天`
+      },
+      grid: { left: 60, right: 30, top: 30, bottom: 40 },
+      xAxis: { name: '投诉量(件)', type: 'value', scale: true },
+      yAxis: { name: '满意度(1-5)', type: 'value', scale: true },
+      series: [{
+        type: 'scatter',
+        symbolSize: d => d[2] * 6,
+        data: byDept.map(d => [d.cnt, d.sat, d.handle_days, d.dept_short]),
+        label: { show: true, formatter: p => p.data[3], position: 'top', fontSize: 10 },
+        itemStyle: { color: p => p.data[1] < 2.5 ? RED : NAVY, opacity: 0.75 }
+      }]
+    });
+
+    // 投诉类型
+    const typeName = { efficiency: '效率', attitude: '态度', process: '流程', other: '其他' };
+    echarts.init(document.getElementById('c_type2')).setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c}件 ({d}%)' },
+      series: [{
+        type: 'pie', radius: ['38%', '62%'], center: ['50%', '50%'],
+        label: { position: 'inside', fontSize: 12, fontWeight: 'bold', color: '#fff', formatter: '{b}\n{d}%' },
+        labelLine: { show: false },
+        data: comp.by_type.map((t, i) => ({
+          value: t.cnt, name: typeName[t.type] || t.type,
+          itemStyle: { color: [RED, GOLD, BLUE, GRAY][i % 4] }
+        }))
+      }]
+    });
+  }
+
+  // ===== 数据质量页 =====
+  async function loadQualityPage() {
+    echarts.init(document.getElementById('q_funnel')).setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c}' },
+      series: [{
+        type: 'funnel', left: '10%', width: '80%',
+        label: { fontSize: 13, position: 'inside' },
+        data: [
+          { value: 30808, name: '原始脏数据 30,808', itemStyle: { color: '#9fb2c8' } },
+          { value: 29272, name: '剔缺失受理时间 -1,536', itemStyle: { color: '#7a8fa8' } },
+          { value: 28108, name: '剔废弃件 -1,164', itemStyle: { color: '#5a7290' } },
+          { value: 27312, name: '剔重复件 -796 → 入库 27,312', itemStyle: { color: NAVY } }
+        ]
+      }]
+    });
+  }
+
+  // ===== 全局悬浮客服 =====
+  document.getElementById('chatFab').addEventListener('click', () => {
+    document.getElementById('chatPanel').classList.toggle('show');
+  });
+  // 前端维护最近 5 轮对话记忆
+  const history = [];
+  function appendMsg(cls, htmlContent) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + cls;
+    div.innerHTML = htmlContent;
+    document.getElementById('chatBody').appendChild(div);
+    document.getElementById('chatBody').scrollTop = document.getElementById('chatBody').scrollHeight;
+    return div;
+  }
+  async function sendMsg() {
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+    appendMsg('user', text);
+    input.value = '';
+
+    const loading = appendMsg('bot', '小政正在思考<span class="dots"></span>');
+
+    try {
+      const resp = await fetch(`${API}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text, history: history.slice(-6) })
+      });
+      const data = await resp.json();
+      loading.innerHTML = data.reply;
+      // 记录对话（最近 3 轮 = 6 条消息）
+      history.push({ role: 'user', content: text });
+      history.push({ role: 'assistant', content: data.reply });
+    } catch (e) {
+      loading.innerHTML = '（后端未启动，请先运行 uvicorn app.main:app --port 8000）';
+    }
+  }
+  document.getElementById('chatInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMsg();
+  });
+  document.querySelectorAll('.quick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.getElementById('chatInput').value = btn.dataset.q;
+      sendMsg();
+    });
+  });
+
+  // ===== 部门详情弹窗 =====
+  let DEPT_DATA = {};
+  function showDept(name) {
+    const d = DEPT_DATA[name];
+    if (!d) return;
+    document.getElementById('modalTitle').textContent = name + ' · 办件详情';
+    document.getElementById('modalBody').innerHTML = `
+      <div class="row"><span>近 90 天办件量</span><b>${d.total} 件</b></div>
+      <div class="row"><span>办结率</span><b>${d.done_rate}%</b></div>
+      <div class="row"><span>平均办结时长</span><b>${d.avg_dur} 天</b></div>
+      <div class="row"><span>超时率</span><b style="color:${d.timeout_rate > 20 ? '#c0392b' : '#1a3a5c'}">${d.timeout_rate}%</b></div>
+    `;
+    document.getElementById('deptModal').classList.add('show');
+  }
+
+  // ===== 从后端加载所有数据并渲染 =====
+  async function loadAll() {
+    // KPI
+    const kpi = await (await fetch(`${API}/kpi`)).json();
+    document.querySelector('.kpi-row').innerHTML = `
+      <div class="kpi">
+        <div class="label">近 90 天总工单</div>
+        <div class="value">${kpi.total_orders.toLocaleString()}</div>
+        <div class="sub">有效工单 ${kpi.total_orders - kpi.abnormal_orders} 件</div>
+      </div>
+      <div class="kpi good">
+        <div class="label">办结率</div>
+        <div class="value">${kpi.done_rate}%</div>
+        <div class="sub">在办 ${kpi.doing_cnt} 件</div>
+      </div>
+      <div class="kpi warn">
+        <div class="label">超时率（预警）</div>
+        <div class="value">${kpi.timeout_rate}%</div>
+        <div class="sub">平均办结 ${kpi.avg_duration_days} 天</div>
+      </div>
+      <div class="kpi warn">
+        <div class="label">投诉满意度（偏低）</div>
+        <div class="value">${kpi.complaint_satisfaction} 分</div>
+        <div class="sub">投诉 ${kpi.complaint_cnt} 件</div>
+      </div>
+    `;
+
+    // 趋势
+    const trend = await (await fetch(`${API}/trend/daily`)).json();
+    const dates = trend.data.map(r => r.dt.slice(5));
+    const orders = trend.data.map(r => r.orders);
+    echarts.init(document.getElementById('c_trend')).setOption({
+      grid: { left: 45, right: 20, top: 20, bottom: 30 },
+      xAxis: { type: 'category', data: dates, axisLabel: { fontSize: 9, interval: 6 } },
+      yAxis: { type: 'value' },
+      tooltip: tooltipStyle,
+      series: [{ type: 'line', data: orders, smooth: true, symbol: 'none',
+                 lineStyle: { color: NAVY, width: 1.8 }, areaStyle: { color: NAVY, opacity: 0.1 } }]
+    });
+
+    // 渠道
+    const ch = await (await fetch(`${API}/channel`)).json();
+    const chName = { online: '线上网办', window: '窗口办理', self: '自助终端' };
+    echarts.init(document.getElementById('c_channel')).setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c}%' },
+      series: [{
+        type: 'pie', radius: ['40%', '65%'], center: ['50%', '50%'],
+        label: { position: 'inside', fontSize: 11, fontWeight: 'bold', color: '#fff', formatter: '{b}\n{d}%' },
+        labelLine: { show: false },
+        data: ch.data.map((r, i) => ({
+          value: r.pct, name: chName[r.channel],
+          itemStyle: { color: [NAVY, BLUE, GOLD][i] }
+        }))
+      }]
+    });
+
+    // 部门排行（同时存给详情弹窗）
+    const dept = await (await fetch(`${API}/dept/ranking`)).json();
+    DEPT_DATA = {};
+    dept.data.forEach(d => DEPT_DATA[d.dept_short] = d);
+    const sorted = [...dept.data].sort((a, b) => a.timeout_rate - b.timeout_rate);
+    const timeoutChart = echarts.init(document.getElementById('c_timeout'));
+    timeoutChart.setOption({
+      grid: { left: 60, right: 45, top: 10, bottom: 20 },
+      xAxis: { type: 'value', axisLabel: { fontSize: 9 } },
+      yAxis: { type: 'category', data: sorted.map(d => d.dept_short), axisLabel: { fontSize: 10 } },
+      tooltip: { trigger: 'axis', formatter: p => `${p[0].name}：超时率 ${p[0].value}%` },
+      series: [{
+        type: 'bar', data: sorted.map(d => d.timeout_rate), barWidth: 13,
+        itemStyle: { color: NAVY },
+        label: { show: true, position: 'right', fontSize: 9, formatter: '{c}%' }
+      }]
+    });
+    timeoutChart.on('click', p => showDept(p.name));
+
+    // 咨询主题
+    const consult = await (await fetch(`${API}/consult`)).json();
+    const topicName = { progress: '进度查询', process: '办理流程', material: '材料清单', policy: '政策咨询' };
+    echarts.init(document.getElementById('c_consult')).setOption({
+      grid: { left: 45, right: 20, top: 30, bottom: 50 },
+      xAxis: {
+        type: 'category',
+        data: consult.by_topic.map(t => topicName[t.topic]),
+        axisLabel: { fontSize: 10, interval: 0, rotate: 20 }
+      },
+      yAxis: { type: 'value' },
+      tooltip: tooltipStyle,
+      series: [{ type: 'bar', data: consult.by_topic.map(t => t.cnt),
+                 itemStyle: { color: NAVY }, barWidth: 24,
+                 label: { show: true, position: 'top', fontSize: 9 } }]
+    });
+
+    // 投诉类型
+    const comp = await (await fetch(`${API}/complaint`)).json();
+    const typeName = { efficiency: '效率', attitude: '态度', process: '流程', other: '其他' };
+    echarts.init(document.getElementById('c_ctype')).setOption({
+      tooltip: { trigger: 'item', formatter: '{b}: {c}件 ({d}%)' },
+      series: [{
+        type: 'pie', radius: ['38%', '62%'], center: ['50%', '50%'],
+        label: { position: 'inside', fontSize: 11, fontWeight: 'bold', color: '#fff', formatter: '{b}\n{d}%' },
+        labelLine: { show: false },
+        data: comp.by_type.map((t, i) => ({
+          value: t.cnt, name: typeName[t.type] || t.type,
+          itemStyle: { color: [RED, GOLD, BLUE, GRAY][i % 4] }
+        }))
+      }]
+    });
+  }
+
+  loadAll().catch(e => {
+    document.querySelector('.main').insertAdjacentHTML('afterbegin',
+      `<div style="background:#fdecea;color:#c0392b;padding:10px 16px;margin-bottom:16px;">后端未启动或连接失败：${e.message}。请先运行 uvicorn app.main:app --port 8000</div>`);
+  });
+</script>
+</body>
+</html>

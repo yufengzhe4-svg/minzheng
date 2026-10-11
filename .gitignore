@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# 数据文件（太大，不传 GitHub）
+data/raw/
+data/clean/
+output/charts/
+web/_shots/
+
+# IDE
+.vscode/
+.idea/
+
+# 系统
+Thumbs.db
+.DS_Store
+
+# 临时脚本
+_*.py

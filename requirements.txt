@@ -1,0 +1,12 @@
+faker>=25.0
+pandas>=2.0
+numpy>=1.26
+matplotlib>=3.8
+pillow>=10.0
+fastapi>=0.110
+uvicorn>=0.29
+pymysql>=1.1
+openai>=1.30
+langchain>=0.3
+langchain-openai>=0.2
+pydantic>=2.0
